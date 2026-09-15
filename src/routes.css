@@ -1,0 +1,40 @@
+.sidebar nav a {
+  align-items: center;
+  background: transparent;
+  border-radius: 8px;
+  color: #bfd3c4;
+  display: flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 14px;
+  height: 45px;
+  padding: 0 13px;
+  text-align: left;
+  text-decoration: none;
+  width: 100%;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: #ffffff18;
+  color: #f4faee;
+}
+
+.sidebar nav a.active {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .sidebar nav a:not(.active) {
+    font-size: 0;
+  }
+
+  .sidebar nav a svg {
+    flex: none;
+  }
+
+  .sidebar nav a {
+    justify-content: center;
+    padding: 0;
+  }
+}

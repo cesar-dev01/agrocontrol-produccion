@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 import campaignStyles from './campaigns.module.css'
 import movementStyles from './movements.module.css'
@@ -87,9 +88,9 @@ function Auth({ onLogin }) {
   return <main className="auth-page"><section className="auth-visual"><Logo /><div className="auth-copy"><p className="eyebrow">GESTIONA CON INTELIGENCIA</p><h1>Tu cultivo,<br /><em>en control.</em></h1><p>Registra cada inversión y toma decisiones con números claros desde la preparación hasta la cosecha.</p></div><div className="auth-stat"><span>↗</span><div><b>Más claridad</b><small>en cada campaña</small></div></div></section><section className="auth-form-wrap"><form className="auth-form" onSubmit={submit}><div className="auth-mobile-logo"><Logo /></div><p className="eyebrow">{signup ? 'CREA TU ESPACIO' : 'BIENVENIDO DE NUEVO'}</p><h2>{signup ? 'Empieza a cultivar mejor.' : 'Ingresa a tu cuenta.'}</h2><p className="muted">{signup ? 'Crea la cuenta del administrador principal.' : 'Gestiona tus campañas e inversiones.'}</p>{signup && <label>Nombre completo<input required value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Juan Pérez" /></label>}<label>Correo electrónico<input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@empresa.com" /></label><label>Contraseña<input name="password" type="password" required placeholder="••••••••" minLength="6" /></label>{error && <p className="form-error">{error}</p>}{!signup && <a href="#recuperar" className="forgot">¿Olvidaste tu contraseña?</a>}<button className="primary full" disabled={loading} type="submit">{loading ? 'Procesando...' : signup ? 'Crear cuenta' : 'Ingresar'} {!loading && <Icon name="arrow" size={17} />}</button><p className="switch">{signup ? '¿Ya tienes una cuenta?' : '¿Aún no tienes cuenta?'} <button type="button" onClick={() => { setSignup(!signup); setError('') }}>{signup ? 'Ingresa' : 'Crea tu cuenta'}</button></p></form></section></main>
 }
 
-function SideNav({ active, setActive, onLogout }) {
+function SideNav({ active, onLogout }) {
   const nav = [['dashboard', 'grid', 'Resumen'], ['cultivos', 'leaf', 'Mis cultivos'], ['insumos', 'bag', 'Insumos'], ['movimientos', 'receipt', 'Movimientos'], ['cosechas', 'leaf', 'Cosechas'], ['reportes', 'chart', 'Reportes'], ['equipo', 'users', 'Equipo']]
-  return <aside className="sidebar"><Logo /><nav>{nav.map(([id, icon, label]) => <button key={id} onClick={() => setActive(id)} className={active === id ? 'active' : ''}><Icon name={icon} />{label}</button>)}</nav><div className="nav-bottom"><button><Icon name="settings" />Configuración</button><button onClick={onLogout}><Icon name="logout" />Cerrar sesión</button></div></aside>
+  return <aside className="sidebar"><Logo /><nav>{nav.map(([id, icon, label]) => <Link key={id} href={`/${id}`} className={active === id ? 'active' : ''}><Icon name={icon} />{label}</Link>)}</nav><div className="nav-bottom"><button><Icon name="settings" />Configuración</button><button onClick={onLogout}><Icon name="logout" />Cerrar sesión</button></div></aside>
 }
 
 function Metric({ title, value, note, icon, tone }) { return <article className="metric"><div><p>{title}</p><h3>{value}</h3><span className={tone || ''}>{note}</span></div><i className={'metric-icon ' + (tone || '')}><Icon name={icon} /></i></article> }
@@ -310,9 +311,10 @@ function LiveDashboard({ products, campaigns, movements, harvests, showProduct, 
 
 function Placeholder({ title, text, icon }) { return <div className="placeholder"><i><Icon name={icon} size={32} /></i><h2>{title}</h2><p>{text}</p><button className="primary">Próximamente</button></div> }
 
-function App() {
+function App({ initialModule = 'dashboard' }) {
   const [user, setUser] = useState(() => !supabase && canUseStorage ? JSON.parse(localStorage.getItem('agro-user') || 'null') : null)
-  const [active, setActive] = useState('dashboard'); const [modal, setModal] = useState(null)
+  const active = initialModule
+  const [modal, setModal] = useState(null)
   const [editing, setEditing] = useState(null)
   const [products, setProducts] = useState(() => {
     const saved = canUseStorage ? JSON.parse(localStorage.getItem('agro-products') || 'null') : null
@@ -438,7 +440,7 @@ function App() {
   const movement = editing?.type === 'movement' ? editing.item : null
   const harvest = editing?.type === 'harvest' ? editing.item : null
   return <div className="app">
-    <SideNav active={active} setActive={setActive} onLogout={async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('agro-user'); setUser(null) }} />
+    <SideNav active={active} onLogout={async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('agro-user'); setUser(null) }} />
     <main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification">♢<i /></button><div className="profile"><span>AD</span><div><b>{user.name}</b><small>Administrador</small></div></div></div></header><div className="page">
       {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} /> : <Placeholder title={title[active][0]} text={title[active][1]} icon={title[active][2]} />}
     </div></main>
@@ -447,7 +449,6 @@ function App() {
     {modal === 'movement' && <MovementModal movement={movement} close={closeModal} campaigns={campaigns} products={products} syncInventory={syncInventory} addMovement={item => setMovements(current => [item, ...current])} updateMovement={updateMovement} />}
     {modal === 'harvest' && <HarvestModal harvest={harvest} close={closeModal} campaigns={campaigns} addHarvest={item => setHarvests(current => [item, ...current])} updateHarvest={updateHarvest} />}
   </div>
-  return <div className="app"><SideNav active={active} setActive={setActive} onLogout={async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('agro-user'); setUser(null) }} /><main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification">♢<i /></button><div className="profile"><span>AD</span><div><b>{user.name}</b><small>Administrador</small></div></div></div></header><div className="page">{active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => setModal('product')} showCampaign={() => setModal('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => setModal('campaign')} closeCampaign={closeCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => setModal('movement')} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => setModal('harvest')} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => setModal('product')} /> : <Placeholder title={title[active][0]} text={title[active][1]} icon={title[active][2]} />}</div></main>{modal === 'product' && <ProductModal user={user} close={() => setModal(null)} addProduct={p => setProducts([p, ...products])} />}{modal === 'campaign' && <CampaignModal user={user} close={() => setModal(null)} addCampaign={c => setCampaigns([c, ...campaigns])} />}{modal === 'movement' && <MovementModal close={() => setModal(null)} campaigns={campaigns} addMovement={m => setMovements([m, ...movements])} />}{modal === 'harvest' && <HarvestModal close={() => setModal(null)} campaigns={campaigns} addHarvest={h => setHarvests([h, ...harvests])} />}</div>
 }
 
 export default App

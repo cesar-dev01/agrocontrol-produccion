@@ -1,5 +1,5 @@
-import App from '../src/main'
+import { redirect } from 'next/navigation'
 
 export default function Page() {
-  return <App />
+  redirect('/dashboard')
 }

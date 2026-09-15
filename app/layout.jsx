@@ -1,4 +1,5 @@
 import '../src/styles.css'
+import '../src/routes.css'
 
 export const metadata = {
   title: 'AgroControl | Gestión de cultivos',
