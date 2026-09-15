@@ -1,0 +1,293 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.stats article {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e6ede4;
+  border-radius: 11px;
+  display: flex;
+  gap: 13px;
+  padding: 18px;
+}
+
+.stats article > span {
+  align-items: center;
+  background: #eaf4e6;
+  border-radius: 10px;
+  color: #397a51;
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.stats b,
+.stats small {
+  display: block;
+}
+
+.stats b {
+  color: #254c38;
+  font-size: 17px;
+}
+
+.stats small {
+  color: #829188;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+  gap: 18px;
+}
+
+.members,
+.permissions,
+.settingsSection {
+  min-width: 0;
+}
+
+.memberRow {
+  align-items: center;
+  border-top: 1px solid #edf1ed;
+  display: flex;
+  gap: 13px;
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
+.avatar {
+  align-items: center;
+  background: #dceaca;
+  border-radius: 50%;
+  color: #2c6848;
+  display: flex;
+  flex: none;
+  font-size: 12px;
+  font-weight: 800;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.memberInfo {
+  min-width: 0;
+}
+
+.memberInfo b,
+.memberInfo small {
+  display: block;
+}
+
+.memberInfo b {
+  font-size: 13px;
+}
+
+.memberInfo small {
+  color: #819087;
+  font-size: 11px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.role,
+.active {
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.role {
+  background: #edf3e7;
+  color: #557847;
+  margin-left: auto;
+}
+
+.active {
+  background: #e8f7eb;
+  color: #278052;
+}
+
+.permissions ul {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 20px 0;
+  padding: 0;
+}
+
+.permissions li {
+  align-items: center;
+  color: #536b5e;
+  display: flex;
+  font-size: 12px;
+  gap: 9px;
+}
+
+.permissions li span {
+  align-items: center;
+  background: #e8f7eb;
+  border-radius: 50%;
+  color: #288052;
+  display: flex;
+  font-size: 9px;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
+}
+
+.note {
+  background: #f6f8f4;
+  border-radius: 8px;
+  color: #75857b;
+  font-size: 11px;
+  line-height: 1.55;
+  padding: 12px;
+}
+
+.settingsForm {
+  display: grid;
+  gap: 18px;
+  max-width: 980px;
+}
+
+.settingsSection {
+  padding: 25px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.formGrid label {
+  color: #385346;
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 7px;
+}
+
+.formGrid input,
+.formGrid select {
+  background: #fff;
+  border: 1px solid #dce5dd;
+  border-radius: 9px;
+  color: #1e372a;
+  height: 46px;
+  outline: none;
+  padding: 0 13px;
+}
+
+.formGrid input:focus,
+.formGrid select:focus {
+  border-color: #57a66d;
+  box-shadow: 0 0 0 3px #a7dcab44;
+}
+
+.formGrid input:disabled {
+  background: #f5f7f4;
+  color: #87958c;
+}
+
+.toggleLabel {
+  align-items: center;
+  background: #f8faf7;
+  border: 1px solid #e4ebe3;
+  border-radius: 9px;
+  display: flex !important;
+  grid-column: 1 / -1;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 10px 13px;
+}
+
+.toggleLabel span b,
+.toggleLabel span small {
+  display: block;
+}
+
+.toggleLabel span small {
+  color: #829087;
+  font-size: 10px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.toggleLabel input {
+  accent-color: #226849;
+  height: 18px;
+  width: 18px;
+}
+
+.formFooter {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  min-height: 43px;
+}
+
+.formFooter p {
+  font-size: 12px;
+  margin-right: 15px;
+}
+
+.success {
+  color: #278052;
+}
+
+.error {
+  color: #b84f38;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .stats,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .memberRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .role {
+    margin-left: 55px;
+  }
+
+  .active {
+    margin-left: auto;
+  }
+
+  .toggleLabel {
+    grid-column: auto;
+  }
+
+  .formFooter {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .formFooter p {
+    margin: 0;
+  }
+}

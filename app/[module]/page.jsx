@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import App from '../../src/main'
 
-const modules = ['dashboard', 'cultivos', 'insumos', 'movimientos', 'cosechas', 'reportes', 'equipo']
+const modules = ['dashboard', 'cultivos', 'insumos', 'movimientos', 'cosechas', 'reportes', 'equipo', 'configuracion']
 
 export function generateStaticParams() {
   return modules.map(module => ({ module }))

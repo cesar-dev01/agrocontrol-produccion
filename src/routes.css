@@ -1,4 +1,5 @@
-.sidebar nav a {
+.sidebar nav a,
+.nav-bottom a {
   align-items: center;
   background: transparent;
   border-radius: 8px;
@@ -15,25 +16,31 @@
 }
 
 .sidebar nav a:hover,
-.sidebar nav a.active {
+.sidebar nav a.active,
+.nav-bottom a:hover,
+.nav-bottom a.active {
   background: #ffffff18;
   color: #f4faee;
 }
 
-.sidebar nav a.active {
+.sidebar nav a.active,
+.nav-bottom a.active {
   font-weight: 700;
 }
 
 @media (max-width: 760px) {
-  .sidebar nav a:not(.active) {
+  .sidebar nav a:not(.active),
+  .nav-bottom a:not(.active) {
     font-size: 0;
   }
 
-  .sidebar nav a svg {
+  .sidebar nav a svg,
+  .nav-bottom a svg {
     flex: none;
   }
 
-  .sidebar nav a {
+  .sidebar nav a,
+  .nav-bottom a {
     justify-content: center;
     padding: 0;
   }

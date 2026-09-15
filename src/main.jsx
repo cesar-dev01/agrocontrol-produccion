@@ -8,6 +8,7 @@ import movementStyles from './movements.module.css'
 import harvestStyles from './harvests.module.css'
 import reportStyles from './reports.module.css'
 import actionStyles from './actions.module.css'
+import accountStyles from './account.module.css'
 
 const expenseData = [
   { label: 'Preparación', amount: 2850, color: '#2f8c64' },
@@ -90,7 +91,7 @@ function Auth({ onLogin }) {
 
 function SideNav({ active, onLogout }) {
   const nav = [['dashboard', 'grid', 'Resumen'], ['cultivos', 'leaf', 'Mis cultivos'], ['insumos', 'bag', 'Insumos'], ['movimientos', 'receipt', 'Movimientos'], ['cosechas', 'leaf', 'Cosechas'], ['reportes', 'chart', 'Reportes'], ['equipo', 'users', 'Equipo']]
-  return <aside className="sidebar"><Logo /><nav>{nav.map(([id, icon, label]) => <Link key={id} href={`/${id}`} className={active === id ? 'active' : ''}><Icon name={icon} />{label}</Link>)}</nav><div className="nav-bottom"><button><Icon name="settings" />Configuración</button><button onClick={onLogout}><Icon name="logout" />Cerrar sesión</button></div></aside>
+  return <aside className="sidebar"><Logo /><nav>{nav.map(([id, icon, label]) => <Link key={id} href={`/${id}`} className={active === id ? 'active' : ''}><Icon name={icon} />{label}</Link>)}</nav><div className="nav-bottom"><Link href="/configuracion" className={active === 'configuracion' ? 'active' : ''}><Icon name="settings" />Configuración</Link><button onClick={onLogout}><Icon name="logout" />Cerrar sesión</button></div></aside>
 }
 
 function Metric({ title, value, note, icon, tone }) { return <article className="metric"><div><p>{title}</p><h3>{value}</h3><span className={tone || ''}>{note}</span></div><i className={'metric-icon ' + (tone || '')}><Icon name={icon} /></i></article> }
@@ -309,7 +310,48 @@ function LiveDashboard({ products, campaigns, movements, harvests, showProduct, 
   return <><div className="page-heading"><div><p className="eyebrow">VISTA GENERAL</p><h1>Buenos días, Administrador <span>🌱</span></h1><p className="muted">Aquí tienes el resumen real de tu producción.</p></div><button className="primary" onClick={showCampaign}><Icon name="plus" size={18} />Nueva campaña</button></div><section className="metrics"><Metric title="Inversión total" value={money.format(totalCost)} note={`${movements.length} movimientos registrados`} icon="receipt" /><Metric title="Ingresos registrados" value={money.format(totalIncome)} note={`${harvests.length} cosechas o ventas`} icon="trend" tone="positive" /><Metric title={result >= 0 ? 'Utilidad actual' : 'Pérdida actual'} value={money.format(Math.abs(result))} note={totalIncome ? `${result >= 0 ? '+' : ''}${((result / totalIncome) * 100).toFixed(1)}% de margen` : 'Registra ingresos para calcular'} icon="chart" tone={result >= 0 ? 'positive' : ''} /><Metric title="Cultivos activos" value={String(activeCampaigns.length)} note={`${activeCampaigns.reduce((sum, item) => sum + Number(item.area || 0), 0)} ha registradas`} icon="leaf" tone="green" /></section><section className="content-grid"><article className="panel campaign">{current ? <><div className="panel-head"><div><h2>Campaña actual</h2><p>{current.crop_name} · {current.season || 'Sin temporada'}</p></div></div><div className="campaign-info"><div className="crop-icon">♧</div><div><b>{current.fieldName || 'Parcela'}</b><p><Icon name="calendar" size={15} /> {date(current.started_on)} — {date(current.estimated_harvest_on)}</p></div><span className="status">{status[current.status] || current.status}</span></div><div className="progress-meta"><span>Estado de campaña</span><b>{status[current.status] || current.status}</b></div><div className="progress"><i style={{ width: current.status === 'growing' ? '68%' : current.status === 'harvesting' ? '90%' : '28%' }} /></div><footer><span>Inversión acumulada <b>· {money.format(movements.filter(m => String(m.crop_cycle_id) === String(current.id)).reduce((sum, m) => sum + Number(m.total_cost || 0), 0))}</b></span><span>Cosecha: {date(current.estimated_harvest_on)}</span></footer></> : <div className="placeholder"><i><Icon name="leaf" size={27} /></i><h2>Inicia tu primera campaña.</h2><p>Registra un cultivo para empezar a medir su producción.</p><button className="primary" onClick={showCampaign}>Nueva campaña</button></div>}</article><article className="panel expenses"><div className="panel-head"><div><h2>Inversión por etapa</h2><p>Todos los movimientos registrados</p></div></div><div className="bar-chart">{stages.map(item => <div className="bar-col" key={item.label}><div className="bar-value" style={{ height: `${(item.amount / max) * 138}px`, background: item.color }}><span>{money.format(item.amount)}</span></div><small>{item.label}</small></div>)}</div></article></section><section className="content-grid lower"><article className="panel activity"><div className="panel-head"><div><h2>Actividad reciente</h2><p>Últimos movimientos registrados</p></div></div>{movements.length === 0 ? <div className="placeholder"><i><Icon name="receipt" size={24} /></i><h2>Sin movimientos aún.</h2><p>Registra tus inversiones para ver la actividad.</p></div> : movements.slice(0, 3).map(m => <div className="activity-row" key={m.id}><i className="activity-icon green"><Icon name="receipt" size={18} /></i><div><b>{m.description}</b><p>{m.activity_type} · {date(m.started_at?.slice(0, 10))}</p></div><strong>- {money.format(m.total_cost)}</strong></div>)}</article><article className="panel inventory"><div className="panel-head"><div><h2>Insumos recientes</h2><p>Disponibles en tu catálogo</p></div><button className="link" onClick={showProduct}>Agregar <Icon name="plus" size={14} /></button></div>{products.length === 0 ? <div className="placeholder"><i><Icon name="bag" size={24} /></i><h2>Sin insumos.</h2><p>Agrega tus primeros productos.</p></div> : products.slice(0, 2).map(p => <div className="stock-row" key={p.id}><i>{p.photo ? <img src={p.photo} alt="" /> : p.icon}</i><div><b>{p.name}</b><p>{p.category}</p></div><span>{p.stock}</span></div>)}</article></section></>
 }
 
-function Placeholder({ title, text, icon }) { return <div className="placeholder"><i><Icon name={icon} size={32} /></i><h2>{title}</h2><p>{text}</p><button className="primary">Próximamente</button></div> }
+function Team({ user }) {
+  const initials = user.name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'AD'
+  return <><div className="page-heading"><div><p className="eyebrow">ADMINISTRACIÓN</p><h1>Equipo</h1><p className="muted">Consulta las personas que administran tu producción.</p></div></div>
+    <section className={accountStyles.stats}>
+      <article><span><Icon name="users" /></span><div><b>1</b><small>Integrante</small></div></article>
+      <article><span><Icon name="settings" /></span><div><b>1</b><small>Administrador</small></div></article>
+      <article><span><Icon name="trend" /></span><div><b>Activo</b><small>Estado de la cuenta</small></div></article>
+    </section>
+    <section className={accountStyles.layout}>
+      <article className={`panel ${accountStyles.members}`}><div className="panel-head"><div><h2>Integrantes</h2><p>Usuarios con acceso al sistema</p></div></div><div className={accountStyles.memberRow}><span className={accountStyles.avatar}>{initials}</span><div className={accountStyles.memberInfo}><b>{user.name}</b><small>{user.email}</small></div><span className={accountStyles.role}>Administrador principal</span><span className={accountStyles.active}>Activo</span></div></article>
+      <article className={`panel ${accountStyles.permissions}`}><div className="panel-head"><div><h2>Permisos del administrador</h2><p>Acceso completo a AgroControl</p></div></div><ul><li><span>✓</span>Gestionar cultivos e insumos</li><li><span>✓</span>Registrar movimientos y cosechas</li><li><span>✓</span>Consultar y exportar reportes</li><li><span>✓</span>Modificar la configuración</li></ul><p className={accountStyles.note}>La invitación de colaboradores con acceso independiente se incorporará cuando se habiliten roles compartidos en Supabase.</p></article>
+    </section>
+  </>
+}
+
+function Settings({ user, onUserUpdate }) {
+  const storageKey = `agro-settings-${user.id}`
+  const stored = canUseStorage ? JSON.parse(localStorage.getItem(storageKey) || 'null') : null
+  const [form, setForm] = useState({ fullName: user.name || '', farmName: stored?.farmName || '', currency: stored?.currency || 'PEN', timezone: stored?.timezone || 'America/Lima', notifications: stored?.notifications ?? true })
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const change = (field, value) => setForm(current => ({ ...current, [field]: value }))
+  const submit = async event => {
+    event.preventDefault(); setSaving(true); setMessage('')
+    if (supabase) {
+      const { error } = await supabase.auth.updateUser({ data: { full_name: form.fullName } })
+      if (error) { setMessage(error.message); setSaving(false); return }
+      await supabase.from('profiles').update({ full_name: form.fullName }).eq('id', user.id)
+    }
+    const nextUser = { ...user, name: form.fullName }
+    localStorage.setItem('agro-user', JSON.stringify(nextUser))
+    localStorage.setItem(storageKey, JSON.stringify({ farmName: form.farmName, currency: form.currency, timezone: form.timezone, notifications: form.notifications }))
+    onUserUpdate(nextUser); setMessage('Configuración guardada correctamente.'); setSaving(false)
+  }
+  return <><div className="page-heading"><div><p className="eyebrow">PREFERENCIAS</p><h1>Configuración</h1><p className="muted">Administra tu perfil y las preferencias generales de AgroControl.</p></div></div>
+    <form className={accountStyles.settingsForm} onSubmit={submit}>
+      <section className={`panel ${accountStyles.settingsSection}`}><div className="panel-head"><div><h2>Perfil del administrador</h2><p>Información que identifica al responsable principal</p></div></div><div className={accountStyles.formGrid}><label>Nombre completo<input required value={form.fullName} onChange={event => change('fullName', event.target.value)} /></label><label>Correo electrónico<input value={user.email || ''} disabled /></label></div></section>
+      <section className={`panel ${accountStyles.settingsSection}`}><div className="panel-head"><div><h2>Operación agrícola</h2><p>Datos y formato predeterminados del sistema</p></div></div><div className={accountStyles.formGrid}><label>Nombre de la finca o empresa<input value={form.farmName} onChange={event => change('farmName', event.target.value)} placeholder="Ej. Hacienda El Porvenir" /></label><label>Moneda<select value={form.currency} onChange={event => change('currency', event.target.value)}><option value="PEN">Sol peruano (S/)</option><option value="USD">Dólar estadounidense ($)</option></select></label><label>Zona horaria<select value={form.timezone} onChange={event => change('timezone', event.target.value)}><option value="America/Lima">Lima, Perú (UTC-5)</option><option value="America/Bogota">Bogotá, Colombia (UTC-5)</option><option value="America/Mexico_City">Ciudad de México</option></select></label><label className={accountStyles.toggleLabel}><span><b>Notificaciones</b><small>Mostrar avisos importantes de la producción</small></span><input type="checkbox" checked={form.notifications} onChange={event => change('notifications', event.target.checked)} /></label></div></section>
+      <div className={accountStyles.formFooter}>{message && <p className={message.includes('correctamente') ? accountStyles.success : accountStyles.error}>{message}</p>}<button className="primary" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios'}</button></div>
+    </form>
+  </>
+}
 
 function App({ initialModule = 'dashboard' }) {
   const [user, setUser] = useState(() => !supabase && canUseStorage ? JSON.parse(localStorage.getItem('agro-user') || 'null') : null)
@@ -434,15 +476,15 @@ function App({ initialModule = 'dashboard' }) {
     autoTable(doc, { startY: 72, head: [['Campaña', 'Parcela', 'Inversión', 'Ingresos', 'Resultado', 'Margen']], body: rows.map(row => [row[0], row[1], money.format(row[3]), money.format(row[4]), money.format(row[5]), `${(row[6] * 100).toFixed(1)}%`]), headStyles: { fillColor: [34, 104, 73] }, styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 0: { cellWidth: 37 }, 1: { cellWidth: 34 } } }); doc.save(`reporte-agrocontrol-${new Date().toISOString().slice(0, 10)}.pdf`)
   }
   if (!user) return <Auth onLogin={login} />
-  const title = { equipo: ['Equipo', 'Invita personas y controla sus permisos.', 'users'] }
   const product = editing?.type === 'product' ? editing.item : null
   const campaign = editing?.type === 'campaign' ? editing.item : null
   const movement = editing?.type === 'movement' ? editing.item : null
   const harvest = editing?.type === 'harvest' ? editing.item : null
+  const initials = user.name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'AD'
   return <div className="app">
     <SideNav active={active} onLogout={async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('agro-user'); setUser(null) }} />
-    <main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification">♢<i /></button><div className="profile"><span>AD</span><div><b>{user.name}</b><small>Administrador</small></div></div></div></header><div className="page">
-      {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} /> : <Placeholder title={title[active][0]} text={title[active][1]} icon={title[active][2]} />}
+    <main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification">♢<i /></button><div className="profile"><span>{initials}</span><div><b>{user.name}</b><small>Administrador</small></div></div></div></header><div className="page">
+      {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} /> : active === 'equipo' ? <Team user={user} /> : <Settings user={user} onUserUpdate={setUser} />}
     </div></main>
     {modal === 'product' && <ProductModal user={user} product={product} close={closeModal} addProduct={item => setProducts(current => [item, ...current])} updateProduct={updateProduct} />}
     {modal === 'campaign' && <CampaignModal user={user} campaign={campaign} close={closeModal} addCampaign={item => setCampaigns(current => [item, ...current])} updateCampaign={updateCampaign} />}
