@@ -400,7 +400,12 @@ function App() {
     sheet.mergeCells('A1:J1'); sheet.getCell('A1').value = 'AGROCONTROL - REPORTE DE MOVIMIENTOS'; sheet.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } }; sheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF164A36' } }
     sheet.addRow([`Generado: ${new Intl.DateTimeFormat('es-PE', { dateStyle: 'long' }).format(new Date())}`]); sheet.addRow([`Inversión total: ${unitMoney.format(total)}`]); sheet.addRow([])
     const header = sheet.addRow(['Fecha', 'Campaña', 'Etapa', 'Tipo', 'Insumo', 'Descripción', 'Cantidad', 'Unidad', 'Costo unitario (S/)', 'Costo total (S/)']); header.font = { bold: true, color: { argb: 'FFFFFFFF' } }; header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF226849' } }
-    rows.forEach(row => sheet.addRow(row)); sheet.getColumn(9).numFmt = '#,##0.00'; sheet.getColumn(10).numFmt = '#,##0.00'; sheet.views = [{ state: 'frozen', ySplit: 5 }]
+    rows.forEach(row => sheet.addRow(row)); sheet.getColumn(9).numFmt = '#,##0.00'; sheet.getColumn(10).numFmt = '#,##0.00'
+    const firstDataRow = 6
+    const lastDataRow = firstDataRow + rows.length - 1
+    const totalRow = sheet.addRow(['', '', '', '', '', '', '', '', 'TOTAL', { formula: `SUM(J${firstDataRow}:J${lastDataRow})`, result: total }])
+    totalRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }; totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF226849' } }; totalRow.getCell(10).numFmt = 'S/ #,##0.00'; totalRow.alignment = { vertical: 'middle' }
+    sheet.views = [{ state: 'frozen', ySplit: 5 }]
     const buffer = await workbook.xlsx.writeBuffer(); const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `movimientos-agrocontrol-${new Date().toISOString().slice(0, 10)}.xlsx`; link.click(); URL.revokeObjectURL(url)
   }
   const exportMovementsPdf = async () => {
