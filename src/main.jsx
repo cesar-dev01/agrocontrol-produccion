@@ -416,7 +416,7 @@ function App() {
     const total = rows.reduce((sum, row) => sum + row[9], 0)
     doc.setFillColor(22, 74, 54); doc.rect(0, 0, 297, 30, 'F'); doc.setTextColor(255, 255, 255); doc.setFontSize(19); doc.text('AgroControl', 14, 14); doc.setFontSize(10); doc.text('Reporte detallado de movimientos', 14, 22)
     doc.setTextColor(34, 61, 48); doc.setFontSize(10); doc.text(`Generado: ${new Intl.DateTimeFormat('es-PE', { dateStyle: 'long' }).format(new Date())}`, 14, 39); doc.setFontSize(12); doc.text(`Inversión total: ${unitMoney.format(total)} · ${rows.length} movimientos`, 14, 48)
-    autoTable(doc, { startY: 55, head: [['Fecha', 'Campaña', 'Etapa', 'Tipo', 'Insumo', 'Descripción', 'Cantidad', 'Unidad', 'C. unitario', 'Total']], body: rows.map(row => [...row.slice(0, 8), unitMoney.format(row[8]), unitMoney.format(row[9])]), headStyles: { fillColor: [34, 104, 73] }, styles: { fontSize: 6.8, cellPadding: 2 }, columnStyles: { 1: { cellWidth: 31 }, 4: { cellWidth: 30 }, 5: { cellWidth: 49 } } })
+    autoTable(doc, { startY: 55, head: [['Fecha', 'Campaña', 'Etapa', 'Tipo', 'Insumo', 'Descripción', 'Cantidad', 'Unidad', 'C. unitario', 'Total']], body: rows.map(row => [...row.slice(0, 8), unitMoney.format(row[8]), unitMoney.format(row[9])]), foot: [['', '', '', '', '', '', '', '', 'TOTAL', unitMoney.format(total)]], showFoot: 'lastPage', headStyles: { fillColor: [34, 104, 73] }, footStyles: { fillColor: [34, 104, 73], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'right' }, styles: { fontSize: 6.8, cellPadding: 2 }, columnStyles: { 1: { cellWidth: 31 }, 4: { cellWidth: 30 }, 5: { cellWidth: 49 } } })
     doc.save(`movimientos-agrocontrol-${new Date().toISOString().slice(0, 10)}.pdf`)
   }
   const exportExcel = async () => {
