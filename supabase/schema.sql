@@ -5,8 +5,19 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null default 'Administrador',
+  farm_name text not null default '',
+  currency text not null default 'PEN',
+  timezone text not null default 'America/Lima',
+  notifications_enabled boolean not null default true,
+  theme text not null default 'light',
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists farm_name text not null default '';
+alter table public.profiles add column if not exists currency text not null default 'PEN';
+alter table public.profiles add column if not exists timezone text not null default 'America/Lima';
+alter table public.profiles add column if not exists notifications_enabled boolean not null default true;
+alter table public.profiles add column if not exists theme text not null default 'light';
 
 create or replace function public.create_profile()
 returns trigger language plpgsql security definer set search_path = public as $$
