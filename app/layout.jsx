@@ -7,6 +7,8 @@ export const metadata = {
   description: 'Control de inversiones, producción y cosechas.',
 }
 
+const themeScript = "try{document.documentElement.dataset.theme=localStorage.getItem('agro-theme')||'light'}catch(error){document.documentElement.dataset.theme='light'}"
+
 export default function RootLayout({ children }) {
-  return <html lang="es"><body>{children}</body></html>
+  return <html lang="es" suppressHydrationWarning><body><script dangerouslySetInnerHTML={{ __html: themeScript }} />{children}</body></html>
 }

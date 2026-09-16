@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import campaignStyles from './campaigns.module.css'
 import movementStyles from './movements.module.css'
@@ -353,9 +354,10 @@ function Settings({ user, onUserUpdate, theme, onThemeChange }) {
   </>
 }
 
-function App({ initialModule = 'dashboard' }) {
+function App({ children }) {
   const [user, setUser] = useState(() => !supabase && canUseStorage ? JSON.parse(localStorage.getItem('agro-user') || 'null') : null)
-  const active = initialModule
+  const pathname = usePathname()
+  const active = pathname.split('/').filter(Boolean)[0] || 'dashboard'
   const [theme, setTheme] = useState(() => canUseStorage ? localStorage.getItem('agro-theme') || 'light' : 'light')
   const [modal, setModal] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -486,7 +488,7 @@ function App({ initialModule = 'dashboard' }) {
   const movement = editing?.type === 'movement' ? editing.item : null
   const harvest = editing?.type === 'harvest' ? editing.item : null
   const initials = user.name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'AD'
-  return <div className="app">
+  return <>{children}<div className="app">
     <SideNav active={active} onLogout={async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('agro-user'); setUser(null) }} />
     <main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification">♢<i /></button><div className="profile"><span>{initials}</span><div><b>{user.name}</b><small>Administrador</small></div></div></div></header><div className="page">
       {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} /> : active === 'equipo' ? <Team user={user} /> : <Settings user={user} onUserUpdate={setUser} theme={theme} onThemeChange={setTheme} />}
@@ -495,7 +497,7 @@ function App({ initialModule = 'dashboard' }) {
     {modal === 'campaign' && <CampaignModal user={user} campaign={campaign} close={closeModal} addCampaign={item => setCampaigns(current => [item, ...current])} updateCampaign={updateCampaign} />}
     {modal === 'movement' && <MovementModal movement={movement} close={closeModal} campaigns={campaigns} products={products} syncInventory={syncInventory} addMovement={item => setMovements(current => [item, ...current])} updateMovement={updateMovement} />}
     {modal === 'harvest' && <HarvestModal harvest={harvest} close={closeModal} campaigns={campaigns} addHarvest={item => setHarvests(current => [item, ...current])} updateHarvest={updateHarvest} />}
-  </div>
+  </div></>
 }
 
 export default App

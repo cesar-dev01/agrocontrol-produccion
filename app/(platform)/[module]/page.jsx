@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import App from '../../src/main'
 
 const modules = ['dashboard', 'cultivos', 'insumos', 'movimientos', 'cosechas', 'reportes', 'equipo', 'configuracion']
 
@@ -16,5 +15,5 @@ export default async function ModulePage({ params }) {
     notFound()
   }
 
-  return <App initialModule={module} />
+  return null
 }
