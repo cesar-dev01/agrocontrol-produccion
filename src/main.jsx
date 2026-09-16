@@ -325,7 +325,7 @@ function Team({ user }) {
   </>
 }
 
-function Settings({ user, onUserUpdate }) {
+function Settings({ user, onUserUpdate, theme, onThemeChange }) {
   const storageKey = `agro-settings-${user.id}`
   const stored = canUseStorage ? JSON.parse(localStorage.getItem(storageKey) || 'null') : null
   const [form, setForm] = useState({ fullName: user.name || '', farmName: stored?.farmName || '', currency: stored?.currency || 'PEN', timezone: stored?.timezone || 'America/Lima', notifications: stored?.notifications ?? true })
@@ -341,13 +341,13 @@ function Settings({ user, onUserUpdate }) {
     }
     const nextUser = { ...user, name: form.fullName }
     localStorage.setItem('agro-user', JSON.stringify(nextUser))
-    localStorage.setItem(storageKey, JSON.stringify({ farmName: form.farmName, currency: form.currency, timezone: form.timezone, notifications: form.notifications }))
+    localStorage.setItem(storageKey, JSON.stringify({ farmName: form.farmName, currency: form.currency, timezone: form.timezone, notifications: form.notifications, theme }))
     onUserUpdate(nextUser); setMessage('Configuración guardada correctamente.'); setSaving(false)
   }
   return <><div className="page-heading"><div><p className="eyebrow">PREFERENCIAS</p><h1>Configuración</h1><p className="muted">Administra tu perfil y las preferencias generales de AgroControl.</p></div></div>
     <form className={accountStyles.settingsForm} onSubmit={submit}>
       <section className={`panel ${accountStyles.settingsSection}`}><div className="panel-head"><div><h2>Perfil del administrador</h2><p>Información que identifica al responsable principal</p></div></div><div className={accountStyles.formGrid}><label>Nombre completo<input required value={form.fullName} onChange={event => change('fullName', event.target.value)} /></label><label>Correo electrónico<input value={user.email || ''} disabled /></label></div></section>
-      <section className={`panel ${accountStyles.settingsSection}`}><div className="panel-head"><div><h2>Operación agrícola</h2><p>Datos y formato predeterminados del sistema</p></div></div><div className={accountStyles.formGrid}><label>Nombre de la finca o empresa<input value={form.farmName} onChange={event => change('farmName', event.target.value)} placeholder="Ej. Hacienda El Porvenir" /></label><label>Moneda<select value={form.currency} onChange={event => change('currency', event.target.value)}><option value="PEN">Sol peruano (S/)</option><option value="USD">Dólar estadounidense ($)</option></select></label><label>Zona horaria<select value={form.timezone} onChange={event => change('timezone', event.target.value)}><option value="America/Lima">Lima, Perú (UTC-5)</option><option value="America/Bogota">Bogotá, Colombia (UTC-5)</option><option value="America/Mexico_City">Ciudad de México</option></select></label><label className={accountStyles.toggleLabel}><span><b>Notificaciones</b><small>Mostrar avisos importantes de la producción</small></span><input type="checkbox" checked={form.notifications} onChange={event => change('notifications', event.target.checked)} /></label></div></section>
+      <section className={`panel ${accountStyles.settingsSection}`}><div className="panel-head"><div><h2>Operación agrícola</h2><p>Datos y formato predeterminados del sistema</p></div></div><div className={accountStyles.formGrid}><label>Nombre de la finca o empresa<input value={form.farmName} onChange={event => change('farmName', event.target.value)} placeholder="Ej. Hacienda El Porvenir" /></label><label>Moneda<select value={form.currency} onChange={event => change('currency', event.target.value)}><option value="PEN">Sol peruano (S/)</option><option value="USD">Dólar estadounidense ($)</option></select></label><label>Zona horaria<select value={form.timezone} onChange={event => change('timezone', event.target.value)}><option value="America/Lima">Lima, Perú (UTC-5)</option><option value="America/Bogota">Bogotá, Colombia (UTC-5)</option><option value="America/Mexico_City">Ciudad de México</option></select></label><div className={accountStyles.themeField}><span><b>Tema de la interfaz</b><small>Elige cómo quieres ver AgroControl</small></span><div className={accountStyles.themePicker}><button type="button" className={theme === 'light' ? accountStyles.selectedTheme : ''} onClick={() => onThemeChange('light')}><span>☀</span>Claro</button><button type="button" className={theme === 'dark' ? accountStyles.selectedTheme : ''} onClick={() => onThemeChange('dark')}><span>☾</span>Oscuro</button></div></div><label className={accountStyles.toggleLabel}><span><b>Notificaciones</b><small>Mostrar avisos importantes de la producción</small></span><input type="checkbox" checked={form.notifications} onChange={event => change('notifications', event.target.checked)} /></label></div></section>
       <div className={accountStyles.formFooter}>{message && <p className={message.includes('correctamente') ? accountStyles.success : accountStyles.error}>{message}</p>}<button className="primary" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios'}</button></div>
     </form>
   </>
@@ -356,6 +356,7 @@ function Settings({ user, onUserUpdate }) {
 function App({ initialModule = 'dashboard' }) {
   const [user, setUser] = useState(() => !supabase && canUseStorage ? JSON.parse(localStorage.getItem('agro-user') || 'null') : null)
   const active = initialModule
+  const [theme, setTheme] = useState(() => canUseStorage ? localStorage.getItem('agro-theme') || 'light' : 'light')
   const [modal, setModal] = useState(null)
   const [editing, setEditing] = useState(null)
   const [products, setProducts] = useState(() => {
@@ -386,6 +387,10 @@ function App({ initialModule = 'dashboard' }) {
   useEffect(() => localStorage.setItem('agro-campaigns', JSON.stringify(campaigns)), [campaigns])
   useEffect(() => localStorage.setItem('agro-movements', JSON.stringify(movements)), [movements])
   useEffect(() => localStorage.setItem('agro-harvests', JSON.stringify(harvests)), [harvests])
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('agro-theme', theme)
+  }, [theme])
   useEffect(() => {
     if (!supabase) return
     supabase.auth.getSession().then(({ data }) => { const authUser = data.session?.user; if (authUser) setUser({ id: authUser.id, name: authUser.user_metadata?.full_name || 'Administrador', email: authUser.email }) })
@@ -484,7 +489,7 @@ function App({ initialModule = 'dashboard' }) {
   return <div className="app">
     <SideNav active={active} onLogout={async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('agro-user'); setUser(null) }} />
     <main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification">♢<i /></button><div className="profile"><span>{initials}</span><div><b>{user.name}</b><small>Administrador</small></div></div></div></header><div className="page">
-      {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} /> : active === 'equipo' ? <Team user={user} /> : <Settings user={user} onUserUpdate={setUser} />}
+      {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} /> : active === 'equipo' ? <Team user={user} /> : <Settings user={user} onUserUpdate={setUser} theme={theme} onThemeChange={setTheme} />}
     </div></main>
     {modal === 'product' && <ProductModal user={user} product={product} close={closeModal} addProduct={item => setProducts(current => [item, ...current])} updateProduct={updateProduct} />}
     {modal === 'campaign' && <CampaignModal user={user} campaign={campaign} close={closeModal} addCampaign={item => setCampaigns(current => [item, ...current])} updateCampaign={updateCampaign} />}
