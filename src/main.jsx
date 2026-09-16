@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { supabase } from '../lib/supabase'
@@ -44,6 +44,12 @@ const normalizeProduct = product => {
 const money = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 })
 const unitMoney = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const canUseStorage = typeof window !== 'undefined'
+const legacyDataKeys = ['agro-products', 'agro-campaigns', 'agro-movements', 'agro-harvests']
+const userCacheKey = (userId, collection) => `agro-cache:${userId}:${collection}`
+const readStoredJson = (key, fallback = null) => {
+  if (!canUseStorage) return fallback
+  try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback } catch { return fallback }
+}
 
 function Icon({ name, size = 20 }) {
   const paths = {
@@ -355,25 +361,29 @@ function Settings({ user, onUserUpdate, theme, onThemeChange }) {
 }
 
 function App({ children }) {
-  const [user, setUser] = useState(() => !supabase && canUseStorage ? JSON.parse(localStorage.getItem('agro-user') || 'null') : null)
+  const [user, setUser] = useState(() => !supabase ? readStoredJson('agro-user') : null)
+  const activeUserId = useRef(user?.id || null)
+  const [cacheOwnerId, setCacheOwnerId] = useState(user?.id || null)
   const pathname = usePathname()
   const active = pathname.split('/').filter(Boolean)[0] || 'dashboard'
   const [theme, setTheme] = useState(() => canUseStorage ? localStorage.getItem('agro-theme') || 'light' : 'light')
   const [modal, setModal] = useState(null)
   const [editing, setEditing] = useState(null)
   const [products, setProducts] = useState(() => {
-    const saved = canUseStorage ? JSON.parse(localStorage.getItem('agro-products') || 'null') : null
+    if (supabase) return []
+    const saved = readStoredJson('agro-products')
     return (saved || initialProducts).map(normalizeProduct)
   })
-  const [campaigns, setCampaigns] = useState(() => canUseStorage ? JSON.parse(localStorage.getItem('agro-campaigns') || '[]') : [])
-  const [movements, setMovements] = useState(() => canUseStorage ? JSON.parse(localStorage.getItem('agro-movements') || '[]') : [])
-  const [harvests, setHarvests] = useState(() => canUseStorage ? JSON.parse(localStorage.getItem('agro-harvests') || '[]') : [])
+  const [campaigns, setCampaigns] = useState(() => supabase ? [] : readStoredJson('agro-campaigns', []))
+  const [movements, setMovements] = useState(() => supabase ? [] : readStoredJson('agro-movements', []))
+  const [harvests, setHarvests] = useState(() => supabase ? [] : readStoredJson('agro-harvests', []))
   const [campaignsLoading, setCampaignsLoading] = useState(Boolean(supabase))
   const [movementsLoading, setMovementsLoading] = useState(Boolean(supabase))
   const [harvestsLoading, setHarvestsLoading] = useState(Boolean(supabase))
-  const loadProducts = async () => {
-    if (!supabase || !user?.id) return
+  const loadProducts = async (ownerId = user?.id) => {
+    if (!supabase || !ownerId) return
     const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false })
+    if (activeUserId.current !== ownerId) return
     if (!error && data) setProducts(data.map(normalizeProduct))
   }
   const syncInventory = async (previous, next) => {
@@ -385,37 +395,76 @@ function App({ children }) {
       return normalizeProduct({ ...product, stock_quantity: Math.max(0, stockQuantity) })
     }))
   }
-  useEffect(() => localStorage.setItem('agro-products', JSON.stringify(products)), [products])
-  useEffect(() => localStorage.setItem('agro-campaigns', JSON.stringify(campaigns)), [campaigns])
-  useEffect(() => localStorage.setItem('agro-movements', JSON.stringify(movements)), [movements])
-  useEffect(() => localStorage.setItem('agro-harvests', JSON.stringify(harvests)), [harvests])
+  const activateAccount = nextUser => {
+    activeUserId.current = nextUser.id
+    if (supabase) {
+      setProducts((readStoredJson(userCacheKey(nextUser.id, 'products'), []) || []).map(normalizeProduct))
+      setCampaigns(readStoredJson(userCacheKey(nextUser.id, 'campaigns'), []))
+      setMovements(readStoredJson(userCacheKey(nextUser.id, 'movements'), []))
+      setHarvests(readStoredJson(userCacheKey(nextUser.id, 'harvests'), []))
+      setCampaignsLoading(true); setMovementsLoading(true); setHarvestsLoading(true)
+    }
+    setCacheOwnerId(nextUser.id)
+    localStorage.setItem('agro-user', JSON.stringify(nextUser))
+    setUser(nextUser)
+  }
+  const clearActiveAccount = () => {
+    activeUserId.current = null
+    setCacheOwnerId(null); setModal(null); setEditing(null)
+    if (supabase) {
+      setProducts([]); setCampaigns([]); setMovements([]); setHarvests([])
+      setCampaignsLoading(true); setMovementsLoading(true); setHarvestsLoading(true)
+    }
+    localStorage.removeItem('agro-user')
+    setUser(null)
+  }
+  const persistCollection = (collection, value, legacyKey) => {
+    if (!canUseStorage) return
+    if (!supabase) { localStorage.setItem(legacyKey, JSON.stringify(value)); return }
+    if (user?.id && cacheOwnerId === user.id) localStorage.setItem(userCacheKey(user.id, collection), JSON.stringify(value))
+  }
+  useEffect(() => persistCollection('products', products, 'agro-products'), [products, user?.id, cacheOwnerId])
+  useEffect(() => persistCollection('campaigns', campaigns, 'agro-campaigns'), [campaigns, user?.id, cacheOwnerId])
+  useEffect(() => persistCollection('movements', movements, 'agro-movements'), [movements, user?.id, cacheOwnerId])
+  useEffect(() => persistCollection('harvests', harvests, 'agro-harvests'), [harvests, user?.id, cacheOwnerId])
+  useEffect(() => { if (supabase) legacyDataKeys.forEach(key => localStorage.removeItem(key)) }, [])
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     localStorage.setItem('agro-theme', theme)
   }, [theme])
   useEffect(() => {
     if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => { const authUser = data.session?.user; if (authUser) setUser({ id: authUser.id, name: authUser.user_metadata?.full_name || 'Administrador', email: authUser.email }) })
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { const authUser = session?.user; setUser(authUser ? { id: authUser.id, name: authUser.user_metadata?.full_name || 'Administrador', email: authUser.email } : null) })
+    const formatUser = authUser => ({ id: authUser.id, name: authUser.user_metadata?.full_name || 'Administrador', email: authUser.email })
+    supabase.auth.getSession().then(({ data }) => { const authUser = data.session?.user; authUser ? activateAccount(formatUser(authUser)) : clearActiveAccount() })
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      const authUser = session?.user
+      if (!authUser) { clearActiveAccount(); return }
+      const nextUser = formatUser(authUser)
+      if (event === 'SIGNED_IN') activateAccount(nextUser)
+      else { localStorage.setItem('agro-user', JSON.stringify(nextUser)); setUser(nextUser) }
+    })
     return () => listener.subscription.unsubscribe()
   }, [])
   useEffect(() => {
     if (!supabase || !user?.id) return
-    loadProducts()
+    loadProducts(user.id)
   }, [user?.id])
   useEffect(() => {
     if (!supabase || !user?.id) { setHarvestsLoading(false); return }
-    supabase.from('harvests').select('*, crop_cycles(crop_name)').order('harvested_on', { ascending: false }).then(({ data, error }) => { if (!error && data) setHarvests(data.map(h => ({ ...h, cycleName: h.crop_cycles?.crop_name }))); setHarvestsLoading(false) })
+    const ownerId = user.id
+    supabase.from('harvests').select('*, crop_cycles(crop_name)').order('harvested_on', { ascending: false }).then(({ data, error }) => { if (activeUserId.current !== ownerId) return; if (!error && data) setHarvests(data.map(h => ({ ...h, cycleName: h.crop_cycles?.crop_name }))); setHarvestsLoading(false) })
   }, [user?.id])
   useEffect(() => {
     if (!supabase || !user?.id) { setMovementsLoading(false); return }
-    supabase.from('activities').select('*, crop_cycles(crop_name), products(name, stock_unit, unit_cost)').order('started_at', { ascending: false }).then(({ data, error }) => { if (!error && data) setMovements(data.map(m => ({ ...m, cycleName: m.crop_cycles?.crop_name, productName: m.products?.name }))); setMovementsLoading(false) })
+    const ownerId = user.id
+    supabase.from('activities').select('*, crop_cycles(crop_name), products(name, stock_unit, unit_cost)').order('started_at', { ascending: false }).then(({ data, error }) => { if (activeUserId.current !== ownerId) return; if (!error && data) setMovements(data.map(m => ({ ...m, cycleName: m.crop_cycles?.crop_name, productName: m.products?.name }))); setMovementsLoading(false) })
   }, [user?.id])
   useEffect(() => {
     if (!supabase || !user?.id) { setCampaignsLoading(false); return }
-    supabase.from('crop_cycles').select('*, fields(id, name, area_hectares, location)').order('started_on', { ascending: false }).then(({ data, error }) => { if (!error && data) setCampaigns(data.map(c => ({ ...c, fieldId: c.fields?.id, fieldName: c.fields?.name || 'Parcela', area: c.fields?.area_hectares, location: c.fields?.location }))); setCampaignsLoading(false) })
+    const ownerId = user.id
+    supabase.from('crop_cycles').select('*, fields(id, name, area_hectares, location)').order('started_on', { ascending: false }).then(({ data, error }) => { if (activeUserId.current !== ownerId) return; if (!error && data) setCampaigns(data.map(c => ({ ...c, fieldId: c.fields?.id, fieldName: c.fields?.name || 'Parcela', area: c.fields?.area_hectares, location: c.fields?.location }))); setCampaignsLoading(false) })
   }, [user?.id])
-  const login = u => { localStorage.setItem('agro-user', JSON.stringify(u)); setUser(u) }
+  const login = activateAccount
   const closeCampaign = async id => {
     if (supabase) { const { error } = await supabase.from('crop_cycles').update({ status: 'closed', harvested_on: new Date().toISOString().slice(0, 10) }).eq('id', id); if (error) return }
     setCampaigns(current => current.map(campaign => campaign.id === id ? { ...campaign, status: 'closed', harvested_on: new Date().toISOString().slice(0, 10) } : campaign))
@@ -431,6 +480,7 @@ function App({ children }) {
   const deleteCampaign = async item => { if (!window.confirm(`¿Eliminar la campaña “${item.crop_name}”? También se eliminarán sus movimientos y cosechas asociados.`)) return; if (supabase) { const { error } = await supabase.from('crop_cycles').delete().eq('id', item.id); if (error) return }; setCampaigns(current => current.filter(campaign => campaign.id !== item.id)); setMovements(current => current.filter(movement => String(movement.crop_cycle_id) !== String(item.id))); setHarvests(current => current.filter(harvest => String(harvest.crop_cycle_id) !== String(item.id))) }
   const deleteMovement = async item => { if (!window.confirm(`¿Eliminar el movimiento “${item.description}”?${item.product_id ? ' El stock utilizado volverá al inventario.' : ''}`)) return; if (supabase) { const { error } = await supabase.from('activities').delete().eq('id', item.id); if (error) return; await loadProducts() } else { await syncInventory(item, null) }; setMovements(current => current.filter(movement => movement.id !== item.id)) }
   const deleteHarvest = async item => { if (!window.confirm('¿Eliminar esta cosecha y su ingreso?')) return; if (supabase) { const { error } = await supabase.from('harvests').delete().eq('id', item.id); if (error) return }; setHarvests(current => current.filter(harvest => harvest.id !== item.id)) }
+  const logout = async () => { if (supabase) await supabase.auth.signOut(); clearActiveAccount() }
   const reportRows = () => campaigns.map(campaign => { const cost = movements.filter(m => String(m.crop_cycle_id) === String(campaign.id)).reduce((sum, m) => sum + Number(m.total_cost || 0), 0); const income = harvests.filter(h => String(h.crop_cycle_id) === String(campaign.id)).reduce((sum, h) => sum + Number(h.total_income || 0), 0); return [campaign.crop_name, campaign.fieldName || '', campaign.season || '', cost, income, income - cost, income ? (income - cost) / income : 0] })
   const exportReport = () => {
     const rows = [['Campaña', 'Parcela', 'Temporada', 'Inversión (S/)', 'Ingresos (S/)', 'Resultado (S/)', 'Margen (%)'], ...reportRows().map(row => [...row.slice(0, 6).map((value, index) => index >= 3 ? Number(value).toFixed(2) : value), (row[6] * 100).toFixed(1)])]
@@ -489,7 +539,7 @@ function App({ children }) {
   const harvest = editing?.type === 'harvest' ? editing.item : null
   const initials = user.name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'AD'
   return <>{children}<div className="app">
-    <SideNav active={active} onLogout={async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('agro-user'); setUser(null) }} />
+    <SideNav active={active} onLogout={logout} />
     <main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification">♢<i /></button><div className="profile"><span>{initials}</span><div><b>{user.name}</b><small>Administrador</small></div></div></div></header><div className="page">
       {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} /> : active === 'equipo' ? <Team user={user} /> : <Settings user={user} onUserUpdate={setUser} theme={theme} onThemeChange={setTheme} />}
     </div></main>
