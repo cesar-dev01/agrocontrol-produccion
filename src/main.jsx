@@ -10,6 +10,8 @@ import harvestStyles from './harvests.module.css'
 import reportStyles from './reports.module.css'
 import actionStyles from './actions.module.css'
 import accountStyles from './account.module.css'
+import inventoryStyles from './inventory.module.css'
+import { InventoryChangeModal, InventoryHistoryModal } from './inventory'
 
 const expenseData = [
   { label: 'Preparación', amount: 2850, color: '#2f8c64' },
@@ -45,7 +47,18 @@ const money = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN
 const unitMoney = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const canUseStorage = typeof window !== 'undefined'
 const defaultPreferences = { farmName: '', currency: 'PEN', timezone: 'America/Lima', notifications: true }
-const legacyDataKeys = ['agro-products', 'agro-campaigns', 'agro-movements', 'agro-harvests']
+const legacyDataKeys = ['agro-products', 'agro-campaigns', 'agro-movements', 'agro-harvests', 'agro-inventory-events']
+const localInventoryEvent = (product, eventType, quantityDelta, balanceAfter, note, occurredOn, unitCost) => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  product_id: product.id,
+  event_type: eventType,
+  quantity_delta: quantityDelta,
+  balance_after: balanceAfter,
+  note,
+  occurred_on: occurredOn || new Date().toISOString().slice(0, 10),
+  unit_cost: unitCost ?? product.unitCost,
+  created_at: new Date().toISOString(),
+})
 const userCacheKey = (userId, collection) => `agro-cache:${userId}:${collection}`
 const readStoredJson = (key, fallback = null) => {
   if (!canUseStorage) return fallback
@@ -97,6 +110,10 @@ function Auth({ onLogin }) {
   return <main className="auth-page"><section className="auth-visual"><Logo /><div className="auth-copy"><p className="eyebrow">GESTIONA CON INTELIGENCIA</p><h1>Tu cultivo,<br /><em>en control.</em></h1><p>Registra cada inversión y toma decisiones con números claros desde la preparación hasta la cosecha.</p></div><div className="auth-stat"><span>↗</span><div><b>Más claridad</b><small>en cada campaña</small></div></div></section><section className="auth-form-wrap"><form className="auth-form" onSubmit={submit}><div className="auth-mobile-logo"><Logo /></div><p className="eyebrow">{signup ? 'CREA TU ESPACIO' : 'BIENVENIDO DE NUEVO'}</p><h2>{signup ? 'Empieza a cultivar mejor.' : 'Ingresa a tu cuenta.'}</h2><p className="muted">{signup ? 'Crea la cuenta del administrador principal.' : 'Gestiona tus campañas e inversiones.'}</p>{signup && <label>Nombre completo<input required value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Juan Pérez" /></label>}<label>Correo electrónico<input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@empresa.com" /></label><label>Contraseña<input name="password" type="password" required placeholder="••••••••" minLength="6" /></label>{error && <p className="form-error">{error}</p>}{!signup && <Link href="/recuperar-contrasena" className="forgot">¿Olvidaste tu contraseña?</Link>}<button className="primary full" disabled={loading} type="submit">{loading ? 'Procesando...' : signup ? 'Crear cuenta' : 'Ingresar'} {!loading && <Icon name="arrow" size={17} />}</button><p className="switch">{signup ? '¿Ya tienes una cuenta?' : '¿Aún no tienes cuenta?'} <button type="button" onClick={() => { setSignup(!signup); setError('') }}>{signup ? 'Ingresa' : 'Crea tu cuenta'}</button></p></form></section></main>
 }
 
+function AppLoading() {
+  return <main className="app-loading"><Logo /><span className="loading-ring" aria-hidden="true" /><p>Cargando tu información...</p></main>
+}
+
 function SideNav({ active, onLogout }) {
   const nav = [['dashboard', 'grid', 'Resumen'], ['cultivos', 'leaf', 'Mis cultivos'], ['insumos', 'bag', 'Insumos'], ['movimientos', 'receipt', 'Movimientos'], ['cosechas', 'leaf', 'Cosechas'], ['reportes', 'chart', 'Reportes'], ['equipo', 'users', 'Equipo']]
   return <aside className="sidebar"><Logo /><nav>{nav.map(([id, icon, label]) => <Link key={id} href={`/${id}`} className={active === id ? 'active' : ''}><Icon name={icon} />{label}</Link>)}</nav><div className="nav-bottom"><Link href="/configuracion" className={active === 'configuracion' ? 'active' : ''}><Icon name="settings" />Configuración</Link><button onClick={onLogout}><Icon name="logout" />Cerrar sesión</button></div></aside>
@@ -109,7 +126,15 @@ function Dashboard({ products, showProduct }) {
   return <><div className="page-heading"><div><p className="eyebrow">VISTA GENERAL</p><h1>Buenos días, Administrador <span>🌱</span></h1><p className="muted">Aquí tienes el resumen de tu producción.</p></div><button className="primary" onClick={showProduct}><Icon name="plus" size={18} />Nuevo registro</button></div><section className="metrics"><Metric title="Inversión total" value="S/ 9,400" note="Esta campaña" icon="receipt" /><Metric title="Ventas estimadas" value="S/ 14,250" note="↑ 18.5% vs. anterior" icon="trend" tone="positive" /><Metric title="Utilidad proyectada" value="S/ 4,850" note="Margen de 34%" icon="chart" tone="positive" /><Metric title="Cultivos activos" value="2" note="15.7 ha en producción" icon="leaf" tone="green" /></section><section className="content-grid"><article className="panel campaign"><div className="panel-head"><div><h2>Campaña actual</h2><p>Maíz amarillo duro · Primavera 2026</p></div><button className="icon-button">•••</button></div><div className="campaign-info"><div className="crop-icon">♧</div><div><b>Hacienda El Porvenir</b><p><Icon name="calendar" size={15} /> 15 mar — 30 ago 2026</p></div><span className="status">En crecimiento</span></div><div className="progress-meta"><span>Progreso de campaña</span><b>68%</b></div><div className="progress"><i /></div><footer><span>Próxima actividad <b>· Fertilización</b></span><span>En 4 días</span></footer></article><article className="panel expenses"><div className="panel-head"><div><h2>Inversión por etapa</h2><p>Campaña actual</p></div><button className="link">Ver detalle <Icon name="arrow" size={14} /></button></div><div className="bar-chart">{expenseData.map(x => <div className="bar-col" key={x.label}><div className="bar-value" style={{height: `${(x.amount / max) * 138}px`, background: x.color}}><span>{money.format(x.amount)}</span></div><small>{x.label}</small></div>)}</div></article></section><section className="content-grid lower"><article className="panel activity"><div className="panel-head"><div><h2>Actividad reciente</h2><p>Últimos movimientos de la campaña</p></div><button className="link">Ver todo <Icon name="arrow" size={14} /></button></div><div className="activity-row"><i className="activity-icon orange"><Icon name="bag" size={18} /></i><div><b>Compra de fertilizante NPK</b><p>Insumos · Hoy, 09:42</p></div><strong>- S/ 1,480</strong></div><div className="activity-row"><i className="activity-icon green"><Icon name="leaf" size={18} /></i><div><b>Aplicación de insecticida</b><p>Cuidado · Ayer, 16:20</p></div><strong>- S/ 360</strong></div><div className="activity-row"><i className="activity-icon blue"><Icon name="calendar" size={18} /></i><div><b>Jornal de riego</b><p>Mano de obra · 24 ago, 08:15</p></div><strong>- S/ 280</strong></div></article><article className="panel inventory"><div className="panel-head"><div><h2>Insumos con stock bajo</h2><p>Revisa antes de tu próxima actividad</p></div><button className="link">Ver insumos <Icon name="arrow" size={14} /></button></div>{products.slice(0, 2).map(p => <div className="stock-row" key={p.id}><i>{p.photo ? <img src={p.photo} alt="" /> : p.icon}</i><div><b>{p.name}</b><p>{p.category}</p></div><span>{p.stock}</span></div>)}</article></section></>
 }
 
-function Products({ products, showProduct, editProduct, deleteProduct, unitMoney }) { return <><div className="page-heading"><div><p className="eyebrow">CATÁLOGO</p><h1>Insumos</h1><p className="muted">Controla los productos y materiales de tu producción.</p></div><button className="primary" onClick={showProduct}><Icon name="plus" size={18} />Agregar insumo</button></div><section className="products-grid">{products.map(p => <article className="product-card" key={p.id}><div className="product-image">{p.photo ? <img src={p.photo} alt={p.name} /> : <span>{p.icon}</span>}</div><div className="product-body"><span className="tag">{p.category}</span><h3>{p.name}</h3><div><span>{p.stock}</span><b>{unitMoney.format(p.value)} / {p.stockUnit}</b></div><Actions className={actionStyles.cardActions} onEdit={() => editProduct(p)} onDelete={() => deleteProduct(p)} /></div></article>)}<button className="add-card" onClick={showProduct}><Icon name="plus" size={30} /><b>Agregar un nuevo insumo</b><span>Con foto y control de stock</span></button></section></> }
+function Products({ products, showProduct, editProduct, deleteProduct, restoreProduct, openInventory, openHistory, unitMoney }) {
+  const [showArchived, setShowArchived] = useState(false)
+  const visible = products.filter(product => Boolean(product.archived_at) === showArchived)
+  return <>
+    <div className="page-heading"><div><p className="eyebrow">CATÁLOGO E INVENTARIO</p><h1>Insumos</h1><p className="muted">Registra compras, ajustes, devoluciones y consumos con historial de existencias.</p></div><button className="primary" onClick={showProduct}><Icon name="plus" size={18} />Agregar insumo</button></div>
+    <div className={inventoryStyles.filter}><button className={!showArchived ? inventoryStyles.selected : ''} onClick={() => setShowArchived(false)}>Activos ({products.filter(p => !p.archived_at).length})</button><button className={showArchived ? inventoryStyles.selected : ''} onClick={() => setShowArchived(true)}>Archivados ({products.filter(p => p.archived_at).length})</button></div>
+    {visible.length === 0 && showArchived ? <p className={inventoryStyles.emptyProducts}>No hay insumos archivados.</p> : <section className="products-grid">{visible.map(p => <article className="product-card" key={p.id}><div className="product-image">{p.photo ? <img src={p.photo} alt={p.name} /> : <span>{p.icon}</span>}</div><div className="product-body"><span className="tag">{p.category}</span><h3>{p.name}</h3><div><span>{p.stock}</span><b>{unitMoney.format(p.value)} / {p.stockUnit}</b></div><div className={inventoryStyles.tools}>{!p.archived_at && <button onClick={() => openInventory(p)}>Entrada / salida</button>}<button onClick={() => openHistory(p)}>Historial</button></div>{p.archived_at ? <button className={inventoryStyles.archiveButton} onClick={() => restoreProduct(p)}>Restaurar insumo</button> : <Actions className={actionStyles.cardActions} onEdit={() => editProduct(p)} onDelete={() => deleteProduct(p)} />}</div></article>)}{!showArchived && <button className="add-card" onClick={showProduct}><Icon name="plus" size={30} /><b>Agregar un nuevo insumo</b><span>Con foto y control de stock</span></button>}</section>}
+  </>
+}
 
 function ProductModal({ close, addProduct, updateProduct, user, product, currencySymbol }) {
   const [photo, setPhoto] = useState(product?.photo || ''); const [name, setName] = useState(product?.name || ''); const [category, setCategory] = useState(product?.category || 'Abono'); const [stock, setStock] = useState(product?.stock?.split(' ')[0] || ''); const [value, setValue] = useState(product?.value || '')
@@ -121,12 +146,12 @@ function ProductModal({ close, addProduct, updateProduct, user, product, currenc
     let photoUrl = photo
     if (supabase) {
       if (file) { const extension = file.name.split('.').pop(); const path = `${user.id}/${Date.now()}.${extension}`; const upload = await supabase.storage.from('product-images').upload(path, file, { contentType: file.type }); if (upload.error) { setError(upload.error.message); setSaving(false); return }; photoUrl = supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl }
-      const request = product ? supabase.from('products').update({ name, category, stock_quantity: Number(stock || 0), stock_unit: stockUnit, unit_cost: Number(value || 0), photo_url: photoUrl }).eq('id', product.id) : supabase.from('products').insert({ name, category, stock_quantity: Number(stock || 0), stock_unit: stockUnit, unit_cost: Number(value || 0), photo_url: photoUrl })
+      const request = product ? supabase.from('products').update({ name, category, unit_cost: Number(value || 0), photo_url: photoUrl }).eq('id', product.id) : supabase.from('products').insert({ name, category, stock_quantity: Number(stock || 0), stock_unit: stockUnit, unit_cost: Number(value || 0), photo_url: photoUrl })
       const saved = await request.select().single()
       if (saved.error) { setError(saved.error.message); setSaving(false); return }
       const formatted = normalizeProduct(saved.data); product ? updateProduct(formatted) : addProduct(formatted); close(); return
     }
-    const formatted = normalizeProduct({ id: product?.id || Date.now(), name, category, stock_quantity: Number(stock || 0), stock_unit: stockUnit, unit_cost: Number(value || 0), icon: '✦', photo: photoUrl }); product ? updateProduct(formatted) : addProduct(formatted); close()
+    const formatted = normalizeProduct({ ...product, id: product?.id || Date.now(), name, category, stock_quantity: product ? product.stockQuantity : Number(stock || 0), stock_unit: product ? product.stockUnit : stockUnit, unit_cost: Number(value || 0), icon: '✦', photo: photoUrl }); product ? updateProduct(formatted) : addProduct(formatted); close()
   }
   return <div className="modal-backdrop" onMouseDown={close}>
     <form className="modal" onMouseDown={e => e.stopPropagation()} onSubmit={submit}>
@@ -137,8 +162,8 @@ function ProductModal({ close, addProduct, updateProduct, user, product, currenc
       <div className="form-grid">
         <label>Nombre<input required value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Urea granulada" /></label>
         <label>Categoría<select value={category} onChange={e => setCategory(e.target.value)}><option>Abono</option><option>Insecticida</option><option>Herbicida</option><option>Semilla</option><option>Herramienta</option></select></label>
-        <label>Stock actual<input type="number" min="0" step="0.01" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" /></label>
-        <label>Unidad de stock<select value={stockUnit} onChange={e => setStockUnit(e.target.value)}><option value="unidades">Unidades</option><option value="sacos">Sacos</option><option value="kg">Kg</option><option value="litros">Litros</option><option value="galones">Galones</option></select></label>
+        {product ? <label>Stock actual<input value={product.stock} readOnly title="Usa Entrada / salida para modificar existencias" /></label> : <label>Stock inicial<input type="number" min="0" step="0.01" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" /></label>}
+        <label>Unidad de stock<select value={stockUnit} onChange={e => setStockUnit(e.target.value)} disabled={Boolean(product)}><option value="unidades">Unidades</option><option value="sacos">Sacos</option><option value="kg">Kg</option><option value="litros">Litros</option><option value="galones">Galones</option></select></label>
         <label>Costo por unidad ({currencySymbol})<input type="number" min="0" step="0.01" value={value} onChange={e => setValue(e.target.value)} placeholder="0.00" /></label>
       </div>
       {error && <p className="form-error">{error}</p>}
@@ -201,6 +226,7 @@ function MovementModal({ close, campaigns, products, addMovement, updateMovement
   const [saving, setSaving] = useState(false)
 
   const selectedProduct = products.find(product => String(product.id) === String(productId))
+  const availableProducts = products.filter(product => !product.archived_at || String(product.id) === String(movement?.product_id))
   const restoredQuantity = movement?.activity_type === 'input' && String(movement.product_id) === String(productId) ? Number(movement.quantity || 0) : 0
   const availableStock = Number(selectedProduct?.stockQuantity || 0) + restoredQuantity
   const calculatedCost = type === 'input' ? Number(quantity || 0) * Number(selectedProduct?.unitCost || 0) : Number(cost || 0)
@@ -209,7 +235,7 @@ function MovementModal({ close, campaigns, products, addMovement, updateMovement
     setType(value)
     setError('')
     if (value === 'input') {
-      const firstProduct = selectedProduct || products[0]
+      const firstProduct = selectedProduct || availableProducts[0]
       setProductId(firstProduct?.id || '')
       setUnit(firstProduct?.stockUnit || 'unidades')
     } else {
@@ -265,7 +291,7 @@ function MovementModal({ close, campaigns, products, addMovement, updateMovement
     close()
   }
 
-  return <div className="modal-backdrop" onMouseDown={close}><form className="modal" onMouseDown={e => e.stopPropagation()} onSubmit={submit}><button type="button" className="modal-close" onClick={close}>×</button><p className="eyebrow">{movement ? 'EDITAR MOVIMIENTO' : 'NUEVO MOVIMIENTO'}</p><h2>{movement ? 'Edita la inversión' : 'Registra una inversión'}</h2><p className="muted">Al usar un insumo, su costo se calcula y el stock se descuenta automáticamente.</p><div className="form-grid"><label className={movementStyles.fullField}>Campaña<select required value={campaignId} onChange={e => setCampaignId(e.target.value)}>{campaigns.map(c => <option value={c.id} key={c.id}>{c.crop_name} · {c.fieldName || 'Parcela'}</option>)}</select></label><label>Etapa<select value={stage} onChange={e => setStage(e.target.value)}><option value="preparation">Preparación de tierra</option><option value="planting">Siembra</option><option value="care">Cuidado</option><option value="harvest">Cosecha</option></select></label><label>Tipo de inversión<select value={type} onChange={e => setMovementType(e.target.value)}><option value="machinery">Maquinaria</option><option value="irrigation">Riego</option><option value="labor">Mano de obra / peones</option><option value="input">Insumos</option><option value="transport">Transporte</option><option value="other">Otro</option></select></label>{type === 'input' && <label className={movementStyles.fullField}>Insumo<select required value={productId} onChange={e => selectProduct(e.target.value)}><option value="">Selecciona un insumo</option>{products.map(product => <option value={product.id} key={product.id}>{product.name} · {product.stock}</option>)}</select>{selectedProduct && <small className={movementStyles.stockHint}>Disponible: {availableStock} {selectedProduct.stockUnit} · Costo: {unitMoney.format(selectedProduct.unitCost)} por {selectedProduct.stockUnit}</small>}{!products.length && <small className={movementStyles.stockWarning}>Primero agrega un insumo con stock disponible.</small>}</label>}<label className={movementStyles.fullField}>Descripción<input required value={description} onChange={e => setDescription(e.target.value)} placeholder={type === 'input' ? 'Ej. Aplicación de fertilizante' : 'Ej. Alquiler de tractor para arado'} /></label><label>Fecha<input required type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label>Costo total ({currencySymbol})<input required type="number" min="0" step="0.01" value={type === 'input' ? calculatedCost.toFixed(2) : cost} onChange={e => setCost(e.target.value)} readOnly={type === 'input'} placeholder="0.00" /></label><label>{type === 'input' ? 'Cantidad utilizada' : 'Cantidad (opcional)'}<input required={type === 'input'} type="number" min="0" step="0.01" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="Ej. 8" /></label><label>Unidad<select value={unit} onChange={e => setUnit(e.target.value)} disabled={type === 'input'}><option value="horas">Horas</option><option value="jornales">Jornales</option><option value="unidades">Unidades</option><option value="sacos">Sacos</option><option value="kg">Kg</option><option value="litros">Litros</option><option value="">No aplica</option></select></label></div>{error && <p className="form-error">{error}</p>}<button disabled={saving || (type === 'input' && !products.length)} className="primary full" type="submit">{saving ? 'Guardando...' : movement ? 'Guardar cambios' : 'Guardar movimiento'} {!saving && <Icon name="arrow" size={17} />}</button></form></div>
+  return <div className="modal-backdrop" onMouseDown={close}><form className="modal" onMouseDown={e => e.stopPropagation()} onSubmit={submit}><button type="button" className="modal-close" onClick={close}>×</button><p className="eyebrow">{movement ? 'EDITAR MOVIMIENTO' : 'NUEVO MOVIMIENTO'}</p><h2>{movement ? 'Edita la inversión' : 'Registra una inversión'}</h2><p className="muted">Al usar un insumo, su costo se calcula y el stock se descuenta automáticamente.</p><div className="form-grid"><label className={movementStyles.fullField}>Campaña<select required value={campaignId} onChange={e => setCampaignId(e.target.value)}>{campaigns.map(c => <option value={c.id} key={c.id}>{c.crop_name} · {c.fieldName || 'Parcela'}</option>)}</select></label><label>Etapa<select value={stage} onChange={e => setStage(e.target.value)}><option value="preparation">Preparación de tierra</option><option value="planting">Siembra</option><option value="care">Cuidado</option><option value="harvest">Cosecha</option></select></label><label>Tipo de inversión<select value={type} onChange={e => setMovementType(e.target.value)}><option value="machinery">Maquinaria</option><option value="irrigation">Riego</option><option value="labor">Mano de obra / peones</option><option value="input">Insumos</option><option value="transport">Transporte</option><option value="other">Otro</option></select></label>{type === 'input' && <label className={movementStyles.fullField}>Insumo<select required value={productId} onChange={e => selectProduct(e.target.value)}><option value="">Selecciona un insumo</option>{availableProducts.map(product => <option value={product.id} key={product.id}>{product.name}{product.archived_at ? ' (archivado)' : ''} · {product.stock}</option>)}</select>{selectedProduct && <small className={movementStyles.stockHint}>Disponible: {availableStock} {selectedProduct.stockUnit} · Costo: {unitMoney.format(selectedProduct.unitCost)} por {selectedProduct.stockUnit}</small>}{!availableProducts.length && <small className={movementStyles.stockWarning}>Primero agrega un insumo con stock disponible.</small>}</label>}<label className={movementStyles.fullField}>Descripción<input required value={description} onChange={e => setDescription(e.target.value)} placeholder={type === 'input' ? 'Ej. Aplicación de fertilizante' : 'Ej. Alquiler de tractor para arado'} /></label><label>Fecha<input required type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label>Costo total ({currencySymbol})<input required type="number" min="0" step="0.01" value={type === 'input' ? calculatedCost.toFixed(2) : cost} onChange={e => setCost(e.target.value)} readOnly={type === 'input'} placeholder="0.00" /></label><label>{type === 'input' ? 'Cantidad utilizada' : 'Cantidad (opcional)'}<input required={type === 'input'} type="number" min="0" step="0.01" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="Ej. 8" /></label><label>Unidad<select value={unit} onChange={e => setUnit(e.target.value)} disabled={type === 'input'}><option value="horas">Horas</option><option value="jornales">Jornales</option><option value="unidades">Unidades</option><option value="sacos">Sacos</option><option value="kg">Kg</option><option value="litros">Litros</option><option value="">No aplica</option></select></label></div>{error && <p className="form-error">{error}</p>}<button disabled={saving || (type === 'input' && !availableProducts.length)} className="primary full" type="submit">{saving ? 'Guardando...' : movement ? 'Guardar cambios' : 'Guardar movimiento'} {!saving && <Icon name="arrow" size={17} />}</button></form></div>
 }
 
 function Harvests({ harvests, campaigns, loading, showHarvest, editHarvest, deleteHarvest, money, timezone }) {
@@ -365,6 +391,7 @@ function Settings({ user, onUserUpdate, preferences, onSavePreferences, theme, o
 
 function App({ children }) {
   const [user, setUser] = useState(() => !supabase ? readStoredJson('agro-user') : null)
+  const [authReady, setAuthReady] = useState(false)
   const activeUserId = useRef(user?.id || null)
   const [cacheOwnerId, setCacheOwnerId] = useState(user?.id || null)
   const pathname = usePathname()
@@ -385,6 +412,12 @@ function App({ children }) {
     const saved = readStoredJson('agro-products')
     return (saved || initialProducts).map(normalizeProduct)
   })
+  const [inventoryEvents, setInventoryEvents] = useState(() => {
+    if (supabase) return []
+    const saved = readStoredJson('agro-inventory-events')
+    if (saved) return saved
+    return (readStoredJson('agro-products') || initialProducts).map(normalizeProduct).filter(product => product.stockQuantity > 0).map(product => localInventoryEvent(product, 'opening', product.stockQuantity, product.stockQuantity, 'Saldo inicial', new Date().toISOString().slice(0, 10)))
+  })
   const [campaigns, setCampaigns] = useState(() => supabase ? [] : readStoredJson('agro-campaigns', []))
   const [movements, setMovements] = useState(() => supabase ? [] : readStoredJson('agro-movements', []))
   const [harvests, setHarvests] = useState(() => supabase ? [] : readStoredJson('agro-harvests', []))
@@ -399,6 +432,15 @@ function App({ children }) {
   }
   const syncInventory = async (previous, next) => {
     if (supabase) { await loadProducts(); return }
+    const logs = []
+    const oldProduct = previous?.activity_type === 'input' ? products.find(product => String(product.id) === String(previous.product_id)) : null
+    const newProduct = next?.activity_type === 'input' ? products.find(product => String(product.id) === String(next.product_id)) : null
+    if (oldProduct) logs.push(localInventoryEvent(oldProduct, 'consumption_reversal', Number(previous.quantity || 0), oldProduct.stockQuantity + Number(previous.quantity || 0), `Reversión: ${previous.description}`))
+    if (newProduct) {
+      const restored = oldProduct && String(oldProduct.id) === String(newProduct.id) ? Number(previous.quantity || 0) : 0
+      logs.push(localInventoryEvent(newProduct, 'consumption', -Number(next.quantity || 0), newProduct.stockQuantity + restored - Number(next.quantity || 0), next.description, next.started_at?.slice(0, 10), next.unit_cost))
+    }
+    if (logs.length) setInventoryEvents(current => [...logs.reverse(), ...current])
     setProducts(current => current.map(product => {
       let stockQuantity = Number(product.stockQuantity || 0)
       if (previous?.activity_type === 'input' && String(previous.product_id) === String(product.id)) stockQuantity += Number(previous.quantity || 0)
@@ -439,6 +481,7 @@ function App({ children }) {
     if (user?.id && cacheOwnerId === user.id) localStorage.setItem(userCacheKey(user.id, collection), JSON.stringify(value))
   }
   useEffect(() => persistCollection('products', products, 'agro-products'), [products, user?.id, cacheOwnerId])
+  useEffect(() => { if (!supabase) localStorage.setItem('agro-inventory-events', JSON.stringify(inventoryEvents)) }, [inventoryEvents])
   useEffect(() => persistCollection('campaigns', campaigns, 'agro-campaigns'), [campaigns, user?.id, cacheOwnerId])
   useEffect(() => persistCollection('movements', movements, 'agro-movements'), [movements, user?.id, cacheOwnerId])
   useEffect(() => persistCollection('harvests', harvests, 'agro-harvests'), [harvests, user?.id, cacheOwnerId])
@@ -448,15 +491,16 @@ function App({ children }) {
     localStorage.setItem('agro-theme', theme)
   }, [theme])
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase) { setAuthReady(true); return }
     const formatUser = authUser => ({ id: authUser.id, name: authUser.user_metadata?.full_name || 'Administrador', email: authUser.email })
-    supabase.auth.getSession().then(({ data }) => { const authUser = data.session?.user; authUser ? activateAccount(formatUser(authUser)) : clearActiveAccount() })
+    supabase.auth.getSession().then(({ data }) => { const authUser = data.session?.user; authUser ? activateAccount(formatUser(authUser)) : clearActiveAccount() }).finally(() => setAuthReady(true))
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const authUser = session?.user
-      if (!authUser) { clearActiveAccount(); return }
+      if (!authUser) { clearActiveAccount(); setAuthReady(true); return }
       const nextUser = formatUser(authUser)
       if (event === 'SIGNED_IN') activateAccount(nextUser)
       else { localStorage.setItem('agro-user', JSON.stringify(nextUser)); setUser(nextUser) }
+      setAuthReady(true)
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -503,7 +547,22 @@ function App({ children }) {
   const updateCampaign = item => setCampaigns(current => current.map(campaign => campaign.id === item.id ? item : campaign))
   const updateMovement = item => setMovements(current => current.map(movement => movement.id === item.id ? item : movement))
   const updateHarvest = item => setHarvests(current => current.map(harvest => harvest.id === item.id ? item : harvest))
-  const deleteProduct = async item => { if (!window.confirm(`¿Eliminar el insumo “${item.name}”?`)) return; if (supabase) { const { error } = await supabase.from('products').delete().eq('id', item.id); if (error) { window.alert(error.message); return } }; setProducts(current => current.filter(product => product.id !== item.id)) }
+  const deleteProduct = async item => { if (!window.confirm(`¿Archivar “${item.name}”? Se ocultará de los insumos activos, pero su historial y movimientos se conservarán.`)) return; const archivedAt = new Date().toISOString(); if (supabase) { const { error } = await supabase.from('products').update({ archived_at: archivedAt }).eq('id', item.id); if (error) { window.alert(error.message); return } }; setProducts(current => current.map(product => product.id === item.id ? { ...product, archived_at: archivedAt } : product)) }
+  const restoreProduct = async item => { if (supabase) { const { error } = await supabase.from('products').update({ archived_at: null }).eq('id', item.id); if (error) { window.alert(error.message); return } }; setProducts(current => current.map(product => product.id === item.id ? { ...product, archived_at: null } : product)) }
+  const recordInventoryChange = async (product, change) => {
+    const delta = ['adjustment_out', 'return_out'].includes(change.kind) ? -change.quantity : change.quantity
+    if (supabase) {
+      const { error } = await supabase.rpc('record_inventory_change', { p_product_id: product.id, p_kind: change.kind, p_quantity: change.quantity, p_occurred_on: change.date, p_note: change.note, p_unit_cost: change.unitCost })
+      if (error) throw error
+      await loadProducts(user.id)
+    } else {
+      const balance = product.stockQuantity + delta
+      if (balance < 0) throw new Error('Stock insuficiente para esta salida.')
+      const nextCost = change.kind === 'purchase' ? change.unitCost : product.unitCost
+      setProducts(current => current.map(item => item.id === product.id ? normalizeProduct({ ...item, stock_quantity: balance, unit_cost: nextCost }) : item))
+      setInventoryEvents(current => [localInventoryEvent(product, change.kind, delta, balance, change.note, change.date, nextCost), ...current])
+    }
+  }
   const deleteCampaign = async item => { if (!window.confirm(`¿Eliminar la campaña “${item.crop_name}”? También se eliminarán sus movimientos y cosechas asociados.`)) return; if (supabase) { const { error } = await supabase.from('crop_cycles').delete().eq('id', item.id); if (error) return }; setCampaigns(current => current.filter(campaign => campaign.id !== item.id)); setMovements(current => current.filter(movement => String(movement.crop_cycle_id) !== String(item.id))); setHarvests(current => current.filter(harvest => String(harvest.crop_cycle_id) !== String(item.id))) }
   const deleteMovement = async item => { if (!window.confirm(`¿Eliminar el movimiento “${item.description}”?${item.product_id ? ' El stock utilizado volverá al inventario.' : ''}`)) return; if (supabase) { const { error } = await supabase.from('activities').delete().eq('id', item.id); if (error) return; await loadProducts() } else { await syncInventory(item, null) }; setMovements(current => current.filter(movement => movement.id !== item.id)) }
   const deleteHarvest = async item => { if (!window.confirm('¿Eliminar esta cosecha y su ingreso?')) return; if (supabase) { const { error } = await supabase.from('harvests').delete().eq('id', item.id); if (error) return }; setHarvests(current => current.filter(harvest => harvest.id !== item.id)) }
@@ -559,18 +618,23 @@ function App({ children }) {
     doc.setFillColor(22, 74, 54); doc.rect(0, 0, 210, 31, 'F'); doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text('AgroControl', 14, 15); doc.setFontSize(11); doc.text('Reporte de rentabilidad por campaña', 14, 23); doc.setTextColor(34, 61, 48); doc.setFontSize(10); doc.text(`Generado: ${now}`, 14, 40); doc.setFontSize(12); doc.text(`Inversión total: ${money.format(totalCost)}`, 14, 50); doc.text(`Ingresos totales: ${money.format(totalIncome)}`, 14, 57); doc.setTextColor(totalIncome - totalCost >= 0 ? 39 : 180, totalIncome - totalCost >= 0 ? 132 : 76, totalIncome - totalCost >= 0 ? 83 : 51); doc.text(`${totalIncome - totalCost >= 0 ? 'Utilidad' : 'Pérdida'}: ${money.format(Math.abs(totalIncome - totalCost))}`, 14, 64)
     autoTable(doc, { startY: 72, head: [['Campaña', 'Parcela', 'Inversión', 'Ingresos', 'Resultado', 'Margen']], body: rows.map(row => [row[0], row[1], money.format(row[3]), money.format(row[4]), money.format(row[5]), `${(row[6] * 100).toFixed(1)}%`]), headStyles: { fillColor: [34, 104, 73] }, styles: { fontSize: 8, cellPadding: 3 }, columnStyles: { 0: { cellWidth: 37 }, 1: { cellWidth: 34 } } }); doc.save(`reporte-agrocontrol-${fileDate()}.pdf`)
   }
+  if (!authReady) return <AppLoading />
   if (!user) return <Auth onLogin={login} />
   const product = editing?.type === 'product' ? editing.item : null
+  const inventoryProduct = ['inventoryChange', 'inventoryHistory'].includes(editing?.type) ? editing.item : null
   const campaign = editing?.type === 'campaign' ? editing.item : null
   const movement = editing?.type === 'movement' ? editing.item : null
   const harvest = editing?.type === 'harvest' ? editing.item : null
   const initials = user.name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'AD'
+  const activeProducts = products.filter(item => !item.archived_at)
   return <>{children}<div className="app">
     <SideNav active={active} onLogout={logout} />
     <main className="workspace"><header className="topbar"><button className="mobile-menu">☰</button><div className="topbar-right"><button className="notification" title={preferences.notifications ? 'Notificaciones activadas' : 'Notificaciones desactivadas'}>♢{preferences.notifications && <i />}</button><div className="profile"><span>{initials}</span><div><b>{user.name}</b><small>{preferences.farmName || 'Administrador'}</small></div></div></div></header><div className="page">
-      {active === 'dashboard' ? <LiveDashboard products={products} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} money={money} timezone={preferences.timezone} userName={user.name} farmName={preferences.farmName} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} timezone={preferences.timezone} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} money={money} unitMoney={unitMoney} timezone={preferences.timezone} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} money={money} timezone={preferences.timezone} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} money={money} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} unitMoney={unitMoney} /> : active === 'equipo' ? <Team user={user} /> : <Settings user={user} onUserUpdate={setUser} preferences={preferences} onSavePreferences={setPreferences} theme={theme} onThemeChange={setTheme} />}
+      {active === 'dashboard' ? <LiveDashboard products={activeProducts} campaigns={campaigns} movements={movements} harvests={harvests} showProduct={() => openNew('product')} showCampaign={() => openNew('campaign')} money={money} timezone={preferences.timezone} userName={user.name} farmName={preferences.farmName} /> : active === 'cultivos' ? <Campaigns campaigns={campaigns} loading={campaignsLoading} showCampaign={() => openNew('campaign')} closeCampaign={closeCampaign} editCampaign={item => openEdit('campaign', item)} deleteCampaign={deleteCampaign} timezone={preferences.timezone} /> : active === 'movimientos' ? <Movements campaigns={campaigns} movements={movements} loading={movementsLoading} showMovement={() => openNew('movement')} editMovement={item => openEdit('movement', item)} deleteMovement={deleteMovement} exportExcel={exportMovementsExcel} exportPdf={exportMovementsPdf} money={money} unitMoney={unitMoney} timezone={preferences.timezone} /> : active === 'cosechas' ? <Harvests campaigns={campaigns} harvests={harvests} loading={harvestsLoading} showHarvest={() => openNew('harvest')} editHarvest={item => openEdit('harvest', item)} deleteHarvest={deleteHarvest} money={money} timezone={preferences.timezone} /> : active === 'reportes' ? <Reports campaigns={campaigns} movements={movements} harvests={harvests} exportReport={exportReport} exportExcel={exportExcel} exportPdf={exportPdf} money={money} /> : active === 'insumos' ? <Products products={products} showProduct={() => openNew('product')} editProduct={item => openEdit('product', item)} deleteProduct={deleteProduct} restoreProduct={restoreProduct} openInventory={item => openEdit('inventoryChange', item)} openHistory={item => openEdit('inventoryHistory', item)} unitMoney={unitMoney} /> : active === 'equipo' ? <Team user={user} /> : <Settings user={user} onUserUpdate={setUser} preferences={preferences} onSavePreferences={setPreferences} theme={theme} onThemeChange={setTheme} />}
     </div></main>
-    {modal === 'product' && <ProductModal user={user} product={product} close={closeModal} addProduct={item => setProducts(current => [item, ...current])} updateProduct={updateProduct} currencySymbol={currencySymbol} />}
+    {modal === 'product' && <ProductModal user={user} product={product} close={closeModal} addProduct={item => { setProducts(current => [item, ...current]); if (!supabase && item.stockQuantity > 0) setInventoryEvents(current => [localInventoryEvent(item, 'opening', item.stockQuantity, item.stockQuantity, 'Stock inicial al crear el insumo'), ...current]) }} updateProduct={updateProduct} currencySymbol={currencySymbol} />}
+    {modal === 'inventoryChange' && inventoryProduct && <InventoryChangeModal product={inventoryProduct} close={closeModal} onSave={change => recordInventoryChange(inventoryProduct, change)} currencySymbol={currencySymbol} />}
+    {modal === 'inventoryHistory' && inventoryProduct && <InventoryHistoryModal product={inventoryProduct} close={closeModal} localEvents={inventoryEvents} unitMoney={unitMoney} timezone={preferences.timezone} />}
     {modal === 'campaign' && <CampaignModal user={user} campaign={campaign} close={closeModal} addCampaign={item => setCampaigns(current => [item, ...current])} updateCampaign={updateCampaign} />}
     {modal === 'movement' && <MovementModal movement={movement} close={closeModal} campaigns={campaigns} products={products} syncInventory={syncInventory} addMovement={item => setMovements(current => [item, ...current])} updateMovement={updateMovement} unitMoney={unitMoney} currencySymbol={currencySymbol} />}
     {modal === 'harvest' && <HarvestModal harvest={harvest} close={closeModal} campaigns={campaigns} addHarvest={item => setHarvests(current => [item, ...current])} updateHarvest={updateHarvest} currencySymbol={currencySymbol} />}

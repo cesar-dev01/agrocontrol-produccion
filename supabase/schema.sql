@@ -190,3 +190,5 @@ create policy "update own product photos" on storage.objects for update to authe
 using (bucket_id = 'product-images' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "delete own product photos" on storage.objects for delete to authenticated
 using (bucket_id = 'product-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Para proyectos nuevos, aplicar después las migraciones de supabase/migrations en orden.

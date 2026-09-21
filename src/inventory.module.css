@@ -1,0 +1,29 @@
+.fullField { grid-column: 1 / -1; }
+.hint { margin-top: 18px; color: #708477; font-size: 12px; line-height: 1.5; }
+.historyModal { width: min(760px, 100%); max-height: min(85vh, 850px); overflow: auto; }
+.historyList { display: grid; margin-top: 22px; border-top: 1px solid #e5ede5; }
+.historyRow { display: flex; justify-content: space-between; gap: 18px; padding: 15px 0; border-bottom: 1px solid #e5ede5; }
+.historyRow b, .historyNumbers strong { display: block; font-size: 13px; }
+.historyRow small { display: block; margin-top: 5px; color: #75867a; font-size: 11px; line-height: 1.45; }
+.historyNumbers { text-align: right; flex: none; }
+.positive { color: #2c8856; }
+.negative { color: #b35f43; }
+.empty { margin-top: 25px; color: #718379; font-size: 13px; }
+.more { margin-top: 20px; padding: 10px 15px; border-radius: 8px; background: #e8f2e9; color: #246b46; font-weight: 700; font-size: 12px; }
+.tools { display: flex; gap: 8px; margin-top: 15px; }
+.tools button, .archiveButton { border-radius: 7px; padding: 8px 10px; background: #e8f2e9; color: #246b46; font-size: 11px; font-weight: 700; }
+.archiveButton { margin-top: 15px; }
+.filter { display: flex; gap: 8px; margin: -8px 0 24px; }
+.filter button { padding: 9px 14px; border-radius: 8px; background: #e9efe8; color: #567461; font-size: 12px; font-weight: 700; }
+.filter .selected { background: #226849; color: white; }
+.emptyProducts { padding: 28px; border-radius: 11px; background: white; color: #718379; font-size: 13px; }
+:global(html[data-theme='dark']) .historyList,
+:global(html[data-theme='dark']) .historyRow { border-color: #2a3c32; }
+:global(html[data-theme='dark']) .hint,
+:global(html[data-theme='dark']) .historyRow small,
+:global(html[data-theme='dark']) .empty { color: #9aafa0; }
+:global(html[data-theme='dark']) .tools button,
+:global(html[data-theme='dark']) .archiveButton,
+:global(html[data-theme='dark']) .more,
+:global(html[data-theme='dark']) .filter button { background: #233b2c; color: #b7e5c5; }
+:global(html[data-theme='dark']) .filter .selected { background: #32865a; color: white; }
